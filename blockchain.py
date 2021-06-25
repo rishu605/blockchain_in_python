@@ -1,11 +1,34 @@
 import pprint
 import json
 from hashlib import sha256
+from collections import OrderedDict
+import pickle
 
 blockchain = []
 current_transactions = []
 participants = set()
 participant_balances = {}
+# mining_reward = 10
+proof_of_work = []
+
+# Generate Proof Of Work by hashing current block,
+# previous hash and by finding a nonce
+
+
+def find_proof_of_work(previous_block):
+
+    # Keep the Order of the Dict same by sorting it in key order to avoid changes in hash if any change happens in Python
+    string_to_hash = f'{json.dumps(previous_block, sort_keys=True).encode("utf-8")}{json.dumps(previous_block["previous_hash"]).encode("utf-8")}'
+
+    nonce = 0
+
+    while (sha256((f'{string_to_hash}{nonce}').encode('utf-8')).hexdigest()[0:4] != '0'*4):
+        nonce = nonce+1
+    proof_of_work.append(nonce)
+    print(f'Proof of Work: {proof_of_work}')
+    return nonce
+
+# Genesis Block does not have any nonce
 
 
 def genesis_block():
@@ -17,13 +40,15 @@ def genesis_block():
 
     blockchain.append(genesis)
 
-# Initialize account value to 0 when the participant transacts for the first time
+# Initialize balance of each participant to 0
 
 
 def initialize_participant_balances(participants):
     for participant in participants:
         if(participant not in participant_balances.keys()):
             participant_balances[participant] = 0
+
+# Update new participants to the set of participants
 
 
 def update_participants(participant_pair):
@@ -32,6 +57,7 @@ def update_participants(participant_pair):
     initialize_participant_balances(participants)
 
 
+# Check account balance of a particular participant
 def check_balance(participant):
     for individual_participant in participant_balances.keys():
         if(individual_participant == participant):
@@ -46,15 +72,21 @@ def add_transaction(sender, recipient, amount):
     amount: amount of coins sent in the transaction
     '''
 
-    new_transaction = {
-        'sender': sender,
-        'recipient': recipient,
-        'amount': amount
-    }
+    # new_transaction = {
+    #     'sender': sender,
+    #     'recipient': recipient,
+    #     'amount': amount
+    # }
+
+    # Use OrderedDict to avoid changing the order of the keys in a transaction which may cause a change in the calculation of hash
+    new_transaction = OrderedDict(
+        [('sender', sender), ('recipient', recipient), ('amount', amount)])
+
     participant_pair = (sender, recipient)
     update_participants(participant_pair)
     print(f'participants: {participants}')
 
+    # Update the participants and their account balance as per the transaction
     for participant, balance in participant_balances.items():
         if(participant == sender):
             participant_balances[sender] = participant_balances[sender] - amount
@@ -70,12 +102,25 @@ def add_transaction(sender, recipient, amount):
 # Calculate account balance of each participant in the blockchain
 # If account balance is not sufficient, sender cannot send the amount
 
+# Hash a particular block in the blockchain
+
 
 def hash_block(block_data):
     block_string = json.dumps(block_data).encode('utf-8')
     block_hash = sha256(block_string).hexdigest().upper()
 
     return block_hash
+
+# Mine the block
+
+
+def save_blockchain_to_file(chain):
+    with open('./blockchain.txt', 'w') as text_file:
+        text_file.write(json.dumps(chain))
+
+    # Following code will keep on updating the Pickle file as Blockchain size increases
+    with open('./blockchain.pkl', 'wb') as pickle_file:
+        pickle_file.write(pickle.dumps(chain))
 
 
 def mine_block():
@@ -85,16 +130,18 @@ def mine_block():
     new_block = {
         'previous_hash': previous_hash,
         'index': len(blockchain),
-        'transactions': current_transactions
+        'transactions': current_transactions,
+        'nonce': find_proof_of_work(previous_block)
     }
 
     blockchain.append(new_block)
     print(f'blockchain: {blockchain}')
+    save_blockchain_to_file(blockchain)
 
 
 # mine_block()
 
-
+# Mine the block when number of transactions hit a certain threshold
 def when_to_mine_the_block():
     global current_transactions
     if(len(current_transactions) == 2):
@@ -104,7 +151,7 @@ def when_to_mine_the_block():
 
 # when_to_mine_the_block()
 
-
+# Verify the integrity of the block by verifying hashes of the previous block
 def verify_blockchain():
     invalid = 0
     if(len(blockchain) == 0):
@@ -131,6 +178,41 @@ def verify_blockchain():
 # print(verification_message)
 # Take input from user using the loop
 
+def check_if_file_has_blockchain_data():
+    with open('./blockchain.txt', 'r') as file_data:
+        data = file_data.read()
+    # blockchain_data = json.loads(file_data.read())
+    if(data):
+        return True
+    else:
+        return False
+
+    # FOLLOWING CODE USES PICKLE FUNCTIONALITY
+    # with open('./blockchain.pkl', 'rb') as pickle_file:
+    #     data = pickle_file.read()
+    #     if(data):
+    #         pickle_data = pickle.loads(data)
+    #         for item in pickle_data:
+    #             print(item)
+    #             print('\n')
+
+
+# check_if_file_has_blockchain_data()
+
+
+def update_saved_data_to_blockchain():
+    with open('./blockchain.txt', 'r') as file_data:
+        blockchain_data = json.loads(file_data.read())
+
+        for item in blockchain_data:
+            blockchain.append(item)
+        # blockchain.append(blockchain_data)
+
+
+# update_saved_data_to_blockchain()
+
+# Get details of the transaction from the user
+
 
 def get_transaction_details_from_user():
     sender = input('Enter the Sender: ')
@@ -141,7 +223,12 @@ def get_transaction_details_from_user():
 
 
 def get_user_input():
-    genesis_block()
+    # Initialize the Blockchain with a genesis block as soon as user interaction starts
+    check_for_data_from_file = check_if_file_has_blockchain_data()
+    if(not check_for_data_from_file):
+        genesis_block()
+    else:
+        update_saved_data_to_blockchain()
 
     stay = True
     while stay:
