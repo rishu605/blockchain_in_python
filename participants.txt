@@ -1,0 +1,1 @@
+["charizard", "richu", "ruby", "pikachu", "anu", "rishu", "anupam", "rishabh", "richa", "charmander", "raichu"]

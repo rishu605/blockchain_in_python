@@ -65,6 +65,22 @@ def check_balance(participant):
     return 0
 
 
+def save_participant_data_to_file(participants, participant_balances):
+    with open('./participants.txt', 'w') as file1:
+        file1.write(json.dumps(list(participants)))
+    with open('./participant_balances.txt', 'w') as file2:
+        file2.write(json.dumps(participant_balances))
+
+
+def save_current_transactions_to_file(current_transactions):
+    with open('./current_transactions.txt', 'w') as file1:
+        if(current_transactions):
+            file1.write(json.dumps(current_transactions))
+        else:
+            file1.seek(0)
+            file1.truncate()
+
+
 def add_transaction(sender, recipient, amount):
     '''
     sender: sender of coins,
@@ -98,9 +114,9 @@ def add_transaction(sender, recipient, amount):
     current_transactions.append(new_transaction)
     print(f'participants: {participants}')
     print(f'participant_balances: {participant_balances}')
-# TODO
-# Calculate account balance of each participant in the blockchain
-# If account balance is not sufficient, sender cannot send the amount
+
+    # Save Participant Data to file whenever a transaction happens
+    save_participant_data_to_file(participants, participant_balances)
 
 # Hash a particular block in the blockchain
 
@@ -147,6 +163,9 @@ def when_to_mine_the_block():
     if(len(current_transactions) == 2):
         mine_block()
         current_transactions = []
+    # If current_transactions has some transaction that will be saved to file.
+    # If current_transactions is set to empty list by the previous code, then file will become empty
+    save_current_transactions_to_file(current_transactions)
 
 
 # when_to_mine_the_block()
@@ -199,6 +218,26 @@ def check_if_file_has_blockchain_data():
 
 # check_if_file_has_blockchain_data()
 
+def update_saved_data_of_participants():
+    with open('./participants.txt', 'r') as file1:
+        data1 = json.loads(file1.read())
+        for item in data1:
+            participants.add(item)
+    with open('./participant_balances.txt', 'r') as file2:
+        data2 = json.loads(file2.read())
+        for key, value in data2.items():
+            participant_balances.update({key: value})
+
+
+def update_saved_current_transactions_data():
+    with open('./current_transactions.txt') as file1:
+        data = file1.read()
+        # First check if there is any data in the file. File may not have any data when the number of transactions done is divisible by the number of transactions required to mine a block.
+        if(data):
+            current_transactions_data = json.loads(data)
+            for transaction in current_transactions_data:
+                current_transactions.append(transaction)
+
 
 def update_saved_data_to_blockchain():
     with open('./blockchain.txt', 'r') as file_data:
@@ -229,6 +268,8 @@ def get_user_input():
         genesis_block()
     else:
         update_saved_data_to_blockchain()
+        update_saved_data_of_participants()
+        update_saved_current_transactions_data()
 
     stay = True
     while stay:

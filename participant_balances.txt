@@ -1,0 +1,1 @@
+{"rishabh": 742.0, "richa": 1125.0, "ruby": 1002.0, "anupam": 223.0, "rishu": 1986.0, "richu": 1325.0, "anu": 597.0, "raichu": 747.0, "pikachu": 1253.0, "charmander": 800.0, "charizard": 1200.0}
